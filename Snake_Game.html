@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        canvas {
+            background-color: #2d3748;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 2px solid #4a5568;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-inter">
+
+    <div class="text-center mb-8">
+        <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500 mb-2">
+            Snake Game
+        </h1>
+        <p class="text-gray-400">Use arrow keys or swipe on mobile to play!</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mt-8 w-full max-w-sm">
+        <button id="startButton" class="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition duration-200 shadow-md">
+            Start Game
+        </button>
+        <button id="resetButton" class="w-full py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white font-bold transition duration-200 shadow-md">
+            Reset
+        </button>
+    </div>
+
+    <div class="mt-8 text-center">
+        <p id="scoreDisplay" class="text-3xl font-bold">Score: 0</p>
+        <p id="messageDisplay" class="text-xl mt-4 font-semibold text-red-400"></p>
+    </div>
+
+    <script>
+        // Game constants
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const tileCount = 25;
+        let gameLoop;
+        let score = 0;
+        let isGameOver = false;
+        let isGamePaused = true;
+
+        // Snake properties
+        let snake = [{ x: 10, y: 10 }];
+        let dx = 0; // x-direction velocity
+        let dy = 0; // y-direction velocity
+
+        // Food properties
+        let food = {};
+
+        // UI elements
+        const startButton = document.getElementById('startButton');
+        const resetButton = document.getElementById('resetButton');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const messageDisplay = document.getElementById('messageDisplay');
+
+        // Initial setup
+        function initializeGame() {
+            snake = [{ x: 10, y: 10 }];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            isGameOver = false;
+            isGamePaused = true;
+            generateFood();
+            updateUI();
+            messageDisplay.textContent = 'Press Start to begin.';
+        }
+
+        // Generate new food at a random valid location
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        }
+
+        // Update the game state (move snake, check for collisions, etc.)
+        function updateGame() {
+            if (isGamePaused || isGameOver) return;
+
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head);
+
+            // Check if snake eats the food
+            if (head.x === food.x && head.y === food.y) {
+                score += 1;
+                generateFood();
+                updateUI();
+            } else {
+                snake.pop();
+            }
+
+            // Check for collision with walls or self
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                endGame();
+            }
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    endGame();
+                }
+            }
+        }
+
+        // End the game
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameLoop);
+            messageDisplay.textContent = `Game Over! Your final score is ${score}.`;
+        }
+
+        // Draw everything on the canvas
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw food
+            ctx.fillStyle = '#f6e05e';
+            ctx.beginPath();
+            ctx.arc(food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, gridSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw snake
+            ctx.fillStyle = '#68d391';
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+        }
+
+        // Update UI elements
+        function updateUI() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        // Game loop
+        function gameLoopFn() {
+            updateGame();
+            draw();
+        }
+
+        // Event listeners for keyboard and touch
+        document.addEventListener('keydown', e => {
+            if (isGamePaused || isGameOver) return;
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (dy === 1) return;
+                    dx = 0; dy = -1;
+                    break;
+                case 'ArrowDown':
+                    if (dy === -1) return;
+                    dx = 0; dy = 1;
+                    break;
+                case 'ArrowLeft':
+                    if (dx === 1) return;
+                    dx = -1; dy = 0;
+                    break;
+                case 'ArrowRight':
+                    if (dx === -1) return;
+                    dx = 1; dy = 0;
+                    break;
+            }
+        });
+
+        // Touch event listeners for mobile swiping
+        let touchstartX = 0;
+        let touchstartY = 0;
+        canvas.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+        });
+        canvas.addEventListener('touchend', e => {
+            if (isGamePaused || isGameOver) return;
+            let touchendX = e.changedTouches[0].screenX;
+            let touchendY = e.changedTouches[0].screenY;
+
+            let diffX = touchendX - touchstartX;
+            let diffY = touchendY - touchstartY;
+
+            // Determine if horizontal or vertical swipe was greater
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (diffX > 0 && dx !== -1) { dx = 1; dy = 0; } // Right swipe
+                else if (diffX < 0 && dx !== 1) { dx = -1; dy = 0; } // Left swipe
+            } else {
+                if (diffY > 0 && dy !== -1) { dx = 0; dy = 1; } // Down swipe
+                else if (diffY < 0 && dy !== 1) { dx = 0; dy = -1; } // Up swipe
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            if (isGamePaused) {
+                isGamePaused = false;
+                messageDisplay.textContent = '';
+                gameLoop = setInterval(gameLoopFn, 100);
+            }
+        });
+
+        resetButton.addEventListener('click', () => {
+            clearInterval(gameLoop);
+            initializeGame();
+        });
+
+        window.onload = function() {
+            const size = Math.min(window.innerWidth, window.innerHeight, 500);
+            canvas.width = tileCount * gridSize;
+            canvas.height = tileCount * gridSize;
+            initializeGame();
+        }
+    </script>
+</body>
+</html>
